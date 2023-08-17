@@ -24,8 +24,9 @@ class Variable:
         self._derivative = None
 
         # This is a bit simplistic, but make things easier.
-        variable_count += 1
         self.unique_id = "Variable" + str(variable_count)
+        #print("create: "+self.unique_id)
+        variable_count += 1
 
         # For debugging can have a name.
         if name is not None:
@@ -191,7 +192,7 @@ class History:
             list of numbers : a derivative with respect to `inputs`
         """
         # TODO: Implement for Task 1.4.
-        raise NotImplementedError('Need to implement for Task 1.4')
+        return self.last_fn.chain_rule(self.ctx, self.inputs, d_output)
 
 
 class FunctionBase:
@@ -274,8 +275,41 @@ class FunctionBase:
         # Tip: Note when implementing this function that
         # cls.backward may return either a value or a tuple.
         # TODO: Implement for Task 1.3.
-        raise NotImplementedError('Need to implement for Task 1.3')
+        """dericatives = cls.backward(ctx, d_output)
+        result = []
+        i = 0
+        if isinstance(dericatives, tuple):
+            for val in inputs:
+                if not is_constant(val):
+                    result.append((val, dericatives[i]))
+                i = i + 1
+        else:
+            for val in inputs:
+                if not is_constant(val):
+                    result.append((val, dericatives))
+                i = i + 1
+        return result"""
 
+        grads = wrap_tuple(cls.backward(ctx, d_output)) # one step of backward pass
+        res = []
+        for var, grad in zip(inputs, grads):
+            if not is_constant(var):
+                res.append((var,grad))
+        return res
+
+
+        """dericatives = cls.backward(ctx, d_output)
+        result = []
+        i = 0
+        if type(dericatives) == tuple:
+            for i, val in enumerate(inputs):
+                if not is_constant(val):
+                    result.append((val, dericatives[i]))
+        else:
+            if not is_constant(inputs):
+                result.append((inputs, dericatives))
+
+        return result"""
 
 # Algorithms for backpropagation
 
@@ -296,7 +330,50 @@ def topological_sort(variable):
                             starting from the right.
     """
     # TODO: Implement for Task 1.4.
-    raise NotImplementedError('Need to implement for Task 1.4')
+
+    PermanentMarked = []
+    TemporaryMarked = []
+    result = []
+
+    def visit(n):
+        # Don't do anything with constants
+        if is_constant(n):
+            return
+        if n.unique_id in PermanentMarked:
+            return
+        elif n.unique_id in TemporaryMarked:
+            raise(RuntimeError("Not a DAG"))
+
+        TemporaryMarked.append(n.unique_id)
+
+        if n.is_leaf():
+            pass
+        else:
+            for input in n.history.inputs:
+                visit(input)
+        TemporaryMarked.remove(n.unique_id)
+        PermanentMarked.append(n.unique_id)
+        # 插入到开头
+        result.insert(0,n)
+
+    visit(variable)
+
+    return result
+
+    """def depth_first_traversal(root, result):
+        if is_constant(root):
+            return
+        stack = [root]
+        node = stack.pop()
+        result.append(node)
+        if node.is_leaf():
+            return
+        else:
+            for v in node.history.inputs:
+                depth_first_traversal(v, result)
+    result = []
+    depth_first_traversal(variable, result)
+    return result"""
 
 
 def backpropagate(variable, deriv):
@@ -313,4 +390,45 @@ def backpropagate(variable, deriv):
     No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
     """
     # TODO: Implement for Task 1.4.
-    raise NotImplementedError('Need to implement for Task 1.4')
+
+    order = topological_sort(variable)
+
+    derivs = {variable.unique_id: deriv}
+
+    """
+    print("")
+    for node in order:
+        print(node.unique_id)
+    print("")
+
+    print(variable.unique_id+":"+str(deriv))
+    print("")
+    """
+
+    count = 0
+    for node in order:
+        count += 1
+        #print(node.unique_id + " " + str(count))
+        d_output = derivs[node.unique_id]
+        if node.is_leaf():
+            node.accumulate_derivative(d_output)
+        else:
+            for input, d in node.history.backprop_step(d_output):
+                #print("input " + str(input.unique_id))
+                if input.unique_id not in derivs:
+                    #print("create " + str(input.unique_id))
+                    derivs[input.unique_id] = 0.0
+                derivs[input.unique_id] += d
+    return
+
+    """order =  topological_sort(variable)
+    queue=[(None, deriv)]
+    for node in order:
+        if node.is_leaf():
+            node.accumulate_derivative(queue.pop(0)[1])
+        else:
+            deriv_node = node.history.backprop_step(queue.pop(0)[1])
+            for item in deriv_node:
+                queue.append(item)"""
+
+

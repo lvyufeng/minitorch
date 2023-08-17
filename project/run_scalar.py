@@ -9,8 +9,15 @@ import random
 class Network(minitorch.Module):
     def __init__(self, hidden_layers):
         super().__init__()
-        # TODO: Implement for Task 1.5.
-        raise NotImplementedError('Need to implement for Task 1.5')
+        # ASSIGN1.5
+        # Submodules
+        self.layer1 = Linear(2, hidden_layers)
+        print("layer1")
+        self.layer2 = Linear(hidden_layers, hidden_layers)
+        print("layer2")
+        self.layer3 = Linear(hidden_layers, 1)
+        print("layer3")
+        # END ASSIGN1.5
 
     def forward(self, x):
         middle = [h.relu() for h in self.layer1.forward(x)]
@@ -39,18 +46,24 @@ class Linear(minitorch.Module):
             )
 
     def forward(self, inputs):
-        # TODO: Implement for Task 1.5.
-        raise NotImplementedError('Need to implement for Task 1.5')
+        # ASSIGN1.5
+        y = [b.value for b in self.bias]
+        for i, x in enumerate(inputs):
+            for j in range(len(y)):
+                y[j] = y[j] + x * self.weights[i][j].value
+        return y
+        # END ASSIGN1.5
 
 
-def default_log_fn(epoch, total_loss, correct, losses):
+def default_log_fn(epoch, total_loss, correct):
     print("Epoch ", epoch, " loss ", total_loss, "correct", correct)
 
+import matplotlib.pyplot as plt
 
 class ScalarTrain:
     def __init__(self, hidden_layers):
         self.hidden_layers = hidden_layers
-        self.model = Network(self.hidden_layers)
+        self.model = None #Network(self.hidden_layers)
 
     def run_one(self, x):
         return self.model.forward(
@@ -64,6 +77,8 @@ class ScalarTrain:
         optim = minitorch.SGD(self.model.parameters(), learning_rate)
 
         losses = []
+        xLabel = [] #用于绘图显示的横坐标
+        corrects = []
         for epoch in range(1, self.max_epochs + 1):
             total_loss = 0.0
             correct = 0
@@ -84,23 +99,45 @@ class ScalarTrain:
                 else:
                     prob = -out + 1.0
                     correct += 1 if out.data < 0.5 else 0
+                #print("prob")
                 loss = -prob.log()
-                (loss / data.N).backward()
-                total_loss += loss.data
+                divloss = loss * (1.0 / data.N)
+                #print("divloss")
 
-            losses.append(total_loss)
+                """
+                print(prob.unique_id)
+                for aa in loss.history.inputs:
+                    if(type(aa)==float):
+                        print(aa)
+                    else:
+                        print(aa.unique_id)
+                """
+
+                divloss.backward()
+
+                total_loss += divloss.data
+
 
             # Update
             optim.step()
 
             # Logging
             if epoch % 10 == 0 or epoch == max_epochs:
-                log_fn(epoch, total_loss, correct, losses)
+                losses.append(total_loss)
+                xLabel.append(epoch)
+                corrects.append(correct / data.N)
+                log_fn(epoch, total_loss, correct/data.N)
+
+        #把过程都画出来
+        plt.plot(xLabel, losses, label="losses")
+        plt.plot(xLabel, corrects, label="corrects")
+        plt.show()
+
 
 
 if __name__ == "__main__":
-    PTS = 50
+    PTS = 100
     HIDDEN = 2
     RATE = 0.5
     data = minitorch.datasets["Simple"](PTS)
-    ScalarTrain(HIDDEN).train(data, RATE)
+    ScalarTrain(HIDDEN).train(data, RATE, 500)

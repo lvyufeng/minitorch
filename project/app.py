@@ -71,8 +71,8 @@ if module_selection == "Module 1":
         st.header("Module 1 - Scalars")
         render_train_interface(ScalarTrain)
 
-    PAGES["Scalar Sandbox"] = render_m1_sandbox
-    PAGES["Autodiff Sandbox"] = render_show_expression
+    #PAGES["Scalar Sandbox"] = render_m1_sandbox
+    #PAGES["Autodiff Sandbox"] = render_show_expression
     PAGES["Module 1: Scalar"] = render_run_scalar_interface
 
 if module_selection == "Module 2":
